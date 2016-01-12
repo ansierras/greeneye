@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script type="text/javascript" src="d3.min.js"></script>
+		<style>
+			body{
+				background: #334f53; /* Old browsers */
+				background: -moz-linear-gradient(top,  #334f53 0%, #1f0a1d 92%, #1f0a1d 100%, #207cca 100%, #7db9e8 100%, #2989d8 100%); /* FF3.6+ */
+				background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#334f53), color-stop(92%,#1f0a1d), color-stop(100%,#1f0a1d), color-stop(100%,#207cca), color-stop(100%,#7db9e8), color-stop(100%,#2989d8)); /* Chrome,Safari4+ */
+				background: -webkit-linear-gradient(top,  #334f53 0%,#1f0a1d 92%,#1f0a1d 100%,#207cca 100%,#7db9e8 100%,#2989d8 100%); /* Chrome10+,Safari5.1+ */
+				background: -o-linear-gradient(top,  #334f53 0%,#1f0a1d 92%,#1f0a1d 100%,#207cca 100%,#7db9e8 100%,#2989d8 100%); /* Opera 11.10+ */
+				background: -ms-linear-gradient(top,  #334f53 0%,#1f0a1d 92%,#1f0a1d 100%,#207cca 100%,#7db9e8 100%,#2989d8 100%); /* IE10+ */
+				background: linear-gradient(to bottom,  #334f53 0%,#1f0a1d 92%,#1f0a1d 100%,#207cca 100%,#7db9e8 100%,#2989d8 100%); /* W3C */
+				filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#334f53', endColorstr='#2989d8',GradientType=0 ); /* IE6-9 */
+			}
+			#trail{
+					width: 100%;
+					height: 80%;
+					background-color: white;
+					position: fixed;
+					visibility: hidden;
+				}
+			div.tooltip {   
+			  position: absolute;           
+			  text-align: center;           
+			  width: 60px;                  
+			  height: 28px;                 
+			  padding: 2px;             
+			  font: 12px sans-serif;        
+			  background: lightsteelblue;   
+			  border: 0px;      
+			  border-radius: 8px;           
+			  pointer-events: none;   
+			  opacity: 0;      
+			}
+		</style>
+	</head>
+	<body>
+	<div class="tooltip"></div>
+	<div id="trail" onclick="closeTrail()">Welcome to the Green Eye. 
+The circle on the center of this display represents the energy consumption in this household, comprised of electricity, warm water and cold-water consumption. 
+The outer-most translucent graph represents the total consumption of the three afore mentioned variables during last month. The further away this graph deviates from the center of the eye, the more over all energy has been consumed. The days of the month are represented along the circumference of the graph, starting with day 1 at the top and continuing clockwise. 
+The three green shaded areas in the center of the eye represent the iris of your home; one area per consumption variable. These however, are not depicted on a monthly consumption, but on a 24-hour layout of the day before.  These three areas are updated every day. 
+Reading them is a bit different, for they display consumption in an inverse way of the monthly graph. The more consumption of a specific variable there is, the closest the area is to the center of the eye, thus closing the iris. Time is again represented along the circumference with 0 hours being the top most value and continuing clockwise. 
+The Green Eye invites you to open your eyes, and see the world outside. Help the Green Eye stay opened by consuming less. Keep track of your resource consumption while at the same time enjoying a nice and calm art piece for the home. 
+
+Legend:
+INSERT LEGEND
+
+NOTE: time has been accelerated for the purpose of demonstration. One day lasts for ten seconds. 
+</div>
+	<button type="button" onclick="displayTrail()">trail</button>
+	<script>
+	function startClock(){
+		var myTimer = setInterval(myFunction, 10000);
+	}
+	function myFunction(){
+		animateStuff(layers);
+		if(currentDay<30){
+			currentDay++;
+		}else{
+			currentDay=0;
+		}
+	}
+	function displayTrail(){
+		document.getElementById("trail").style.visibility = "visible";
+	}
+	function closeTrail(){
+		document.getElementById("trail").style.visibility = "hidden";
+	}
+
+		var width = window.innerWidth;//560,
+			height = window.innerHeight;//500,
+			
+			
+			outerCirclePadding = 10;
+			outerRadius2 = height / 2 - 10;
+			innerRadius2 = outerRadius2-100;
+			outerRadius = innerRadius2 - outerCirclePadding;//height / 2 - 10,
+			innerRadius = outerRadius *0.4;
+			forInverse = outerRadius + innerRadius;
+			
+
+		var angle = d3.time.scale()
+			.range([0, 2 * Math.PI]);
+
+		var radius = d3.scale.linear()
+			.range([innerRadius, outerRadius]);
+
+		var radius2 = d3.scale.linear()
+			.range([innerRadius2, outerRadius2]);
+
+		var color = d3.scale.linear()
+			.range(["#45936C","#9ACC77","#E5EAD4"]) //LAYER0, LAYER1, LAYER2
+			.domain([0,1,2]);
+
+		var stroke = d3.scale.linear()
+			.range(["#45936C","#9ACC77","#E5EAD4"])
+			.domain([0,1,2]);
+
+		var stack = d3.layout.stack()
+			.offset("wiggle")
+			.values(function(d) { return d.values; })
+			.x(function(d) { return d.time; })
+			.y(function(d) { return d.value; });
+
+		var nest = d3.nest()
+			.key(function(d) { return d.day; })
+			.key(function(d) { return d.key; })
+			.sortKeys(d3.ascending);
+		var nest2 = d3.nest()
+			.key(function(d) { return d.key; });
+
+		/*var line = d3.svg.line.radial()
+			.interpolate("cardinal-closed")
+			.angle(function(d) { return angle(d.time); })
+			.radius(function(d) { return radius(d.y0 + d.y); });*/
+
+		var currentArea = 0;
+		var currentDay = 5;
+
+		var area = d3.svg.area.radial()
+			.interpolate("cardinal-closed")
+			.angle(function(d) { return angle(d.time); })
+			.innerRadius(innerRadius2)
+			.outerRadius(function(d) { return radius2(d.value); });
+
+
+		var nonStackAreaInv = d3.svg.area.radial()
+			.interpolate("cardinal-closed")
+			.angle(function(d) {return angle(d.time); })
+			.innerRadius(function(d, i) { 
+					var myValue = 0; 
+					myValue = d.value;
+					if((forInverse - radius(myValue))<0){
+						return(radius(0));
+					}
+				return (forInverse - radius(myValue)); })
+			.outerRadius(outerRadius);
+
+		var nonStackAreaInvZeros = d3.svg.area.radial()
+			.interpolate("cardinal-closed")
+			.angle(function(d) { return angle(d.time); })
+			.innerRadius(function(d) { 
+				var currentInner = 0;
+				currentInner = forInverse - radius(0);
+				if(currentInner<0){
+					currentInner=0;
+				}
+				return currentInner; })
+			.outerRadius(outerRadius);
+
+
+
+//*********************************************************************************
+//***************** SVG 4 - areas NO sobrepuestas e invertidas ********************
+//*********************************************************************************
+		var svg4 = d3.select("body").append("svg")
+			.attr("width", width)
+			.attr("height", height)
+		  .append("g")
+			.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+		svg4.append("circle")
+		    .attr("cy",0)
+		    .attr("cx",0)
+			.attr("r",outerRadius)
+			.attr("id", "pupil")
+			.style("fill", "#1F0A1D");
+	//***************************************************
+	//***************** FILTRO -> drop shadow ***************************
+	//***************************************************
+		var defs = svg4.append( 'defs' );
+		var filter = defs.append( 'filter' )
+		                 .attr( 'id', 'dropshadow' )
+		filter.append( 'feGaussianBlur' )
+		      .attr( 'in', 'SourceAlpha' )
+		      .attr( 'stdDeviation', 3 ) 
+		      .attr( 'result', 'blur' );
+		filter.append( 'feOffset' )
+		      .attr( 'in', 'blur' )
+		      .attr( 'dx', 2 ) 
+		      .attr( 'dy', 3 ) 
+		      .attr( 'result', 'offsetBlur' );
+		
+		var feMerge = filter.append( 'feMerge' );
+			feMerge.append( 'feMergeNode' )
+		       .attr( 'in", "offsetBlur' )
+			feMerge.append( 'feMergeNode' )
+		       .attr( 'in', 'SourceGraphic' );
+	//***************************************************
+	//***************** FIN FILTRO ***************************
+	//***************************************************
+		var layers = [];
+		d3.csv("hourly.csv", type, function(error, data) {
+		  console.log(data);
+		  layers = nest.entries(data);
+		  // Extend the domain slightly to match the range of [0, 2π].
+		  angle.domain([0, d3.max(data, function(d) { return d.time+1; })]);
+		  //radius.domain([0, d3.max(data, function(d) { return d.value; })]); //Usar este si quiero que todas usen una sola escala
+		  initLayers(layers);
+
+		  animateStuff(layers);
+		  
+		});
+
+		function initLayers(arg){
+			var theValues = [];
+			var tooltip = d3.select("body").select(".tooltip");
+			for(var j=0; j<arg[currentDay].values.length; j++){
+				currentArea=j;
+				theValues = arg[currentDay].values[j].values;
+				radius.domain([0, d3.max(theValues, function(d) { return d.value; })]); //Para tener escala distinta por cada set
+				svg4.selectAll(".layer"+j)
+				  .data([arg[currentDay].values[j]])
+				.enter().append("path")
+				  .attr("class", "layer"+j)
+				  .attr("d", function(d) { return nonStackAreaInvZeros(d.values); })
+				  .attr( 'filter', 'url(#dropshadow)' ) 
+				  .attr("id", function(d) { return d.key;})
+				  .style("opacity", 0.7)
+				  .style("fill", function(d,i) { return color(j); })
+				  .style("stroke", function(d,i){ return stroke(j);})
+				  .style("stroke-width", "0.125em")
+				  .on("mouseover", function(d) {      
+			            var tooltipText = "";
+			            if (d3.select(this).attr("id") == "EL") {
+					        tooltipText="Electricity";
+					    }else if(d3.select(this).attr("id") == "KV"){
+					    	tooltipText="Cold Water";
+					    }else if(d3.select(this).attr("id") == "VV"){
+					    	tooltipText="Warm Water";
+					    }
+			            
+			            tooltip.transition()        
+			                .duration(200)      
+			                .style("opacity", .9)      
+			            //div .html(formatTime(d.date) + "<br/>"  + d.close)  
+			            	.text(tooltipText)
+			                .style("left", (d3.event.pageX) + "px")     
+			                .style("top", (d3.event.pageY - 28) + "px");    
+			            })                  
+			        .on("mouseout", function(d) {       
+			            tooltip.transition()        
+			                .duration(500)      
+			                .style("opacity", 0);   
+			        });
+			}
+			startClock();	
+		}
+		function animateStuff(arg){
+			var theValues = [];
+			for(var j=0; j<arg[currentDay].values.length; j++){
+				theValues = arg[currentDay].values[j].values;
+				radius.domain([0, d3.max(theValues, function(d) { return d.value; })]);
+				svg4.selectAll(".layer"+j)
+					  .data([arg[currentDay].values[j]])
+					  .transition()
+					  .delay(function(d, i) {
+							return j * 2000;
+						})
+					  .duration(3000)
+					  .attr("d", function(d) { return nonStackAreaInv(d.values); });
+			}
+			
+			
+		}
+//***************************************************
+//***************** FIN SVG4 ***************************
+//***************************************************
+
+	
+		//var layers2 = [];
+		d3.csv("last_month.csv", type, function(error, data) {
+		  // Extend the domain slightly to match the range of [0, 2π].
+		//console.log(data);
+		  angle.domain([0, d3.max(data, function(d) { return d.time+1; })]);
+		  radius2.domain([0, d3.max(data, function(d) { return d.value; })]); 
+		  var monthGraph = nest2.entries(data);
+		  svg4.selectAll(".layer3")
+				  .data(monthGraph)
+				.enter().append("path")
+				  .attr("class", "layer3")
+				  .attr("d", function(d) { return area(d.values); })
+				  //.attr( 'filter', 'url(#dropshadow)' ) 
+				  .attr("id", function(d) { return d.key;})
+				  .style("opacity", "0.1")
+				  //.style("fill", "#E5EAD4")
+				  .style("stroke", function(d,i){ return stroke(i);})
+				  .style("stroke-width", "0.125em");
+		  
+		});
+
+
+		function type(d) {
+		  d.time = +d.time;
+		  d.value = +d.value;
+		  return d;
+		}
+
+</script>
+	</body>
+</html>
